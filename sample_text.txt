@@ -1,0 +1,262 @@
+#Import necessary libraries
+from airflow import DAG
+from datetime import datetime, timedelta
+from workflow_framework import callbacks
+
+#Building a parameters dictionary to be used into the dag set up
+_params = {
+    'workflow' : 'SOP-FULL-CONS_MX_IBP_HS-SC_SOP_PROD_LOC_CUST_HS',
+    'config_path' : 'full/cons_mx_ibp_hs/sop-full-cons_mx_ibp_hs-sc_sop_prod_loc_cust_hs',
+    'ops_emails' : ['jorge.ortiz@walmart.com'],
+    'priority' : 'P3',
+    'tags' : ['IBP', 'SC', 'P2', 'vn53rab'],
+    'sla_mins' : 120,
+    'num_of_retries' : 0,
+    'retry_delay' : 2,
+    'schedule_interval' : None,
+    'max_active_runs' : 1, 
+    'description' : 'Build table SC_SOP_PROD_LOC_CUST_HS (WKPRODLOCCUST)',
+    'start_date' : datetime(2024, 5, 1)
+}
+
+def failure_callback(context):
+    callbacks.failure_callback(context, config_path, workflow, priority)
+def sla_miss_callback(context):
+    callbacks.sla_miss_callback(context, workflow, priority)
+
+
+with DAG(_params['workflow'],
+    ## These parameters will be passed on to each operator
+    default_args={
+        'retries': _params['num_of_retries'],
+        'retry_delay' : timedelta(minutes = _params['retry_delay']),
+        'email': _params['ops_emails'],
+        'email_on_failure': True,
+        'email_on_retry': False,
+        'sla': timedelta(minutes = _params['sla_mins']),
+    },
+    description = _params['description'],
+    schedule_interval = _params['schedule_interval'],
+    start_date = _params['start_date'],
+    catchup = False,
+    tags = _params['tags'],
+    max_active_runs = _params['max_active_runs'],
+    on_failure_callback = failure_callback,
+    sla_miss_callback = sla_miss_callback
+) as dag:
+    ##Import libraries to be used in dag
+    from pathlib import Path
+    from workflow_framework import framework
+    from workflow_framework.config import *
+    from airflow.operators.python_operator import PythonOperator
+    from airflow.utils.db import provide_session
+    from airflow.models import XCom
+    
+    ## Defining Xcom cleaning task
+    @provide_session  
+    def cleanup_xcom(session = None):
+        session.query(XCom).filter(XCom.dag_id == _params['workflow']).delete()
+ 
+    ## Setting up custom global variables
+    def initVariables():
+        global framework
+        path = Path(__file__).with_name(_params['workflow'].lower()+'_config.yaml')
+        framework = framework.Framework(_params['workflow'], path)
+    
+    initVariables()
+    
+    ## Dummy task to start the dag
+    start = framework.build_task('START','start')
+    
+    ## Dummy task to end the dag
+    end = framework.build_task('END','end',trigger_rule='all_success')
+
+    build_table = framework.build_task('SPARK_SQL', 'build_table')
+    
+    ## Xcom clean-up task
+    delete_xcom_task = PythonOperator(
+        task_id = 'Delete_Xcom',
+        python_callable = cleanup_xcom,
+        trigger_rule = "all_done")
+        
+ #Workflow definition 
+    start >> build_table >> delete_xcom_task >> end
+
+# Generado el dia 2024-06-06 por vn53rab
+# proyecto: IBP SOP
+# Source details
+
+usr: "svcmxhs"
+USER: "svcmxhs"
+tbl_stores: "stores"
+target_table_bucket: "gs://d497cdf5e1f18dc3b1f2d2bb498b8d9f4c658441bec586bbc0e7a6e6a11dc0"
+target_table: "sc_sop_wk_sale_int_mthly"
+target_schema: "cons_mx_ibp_hs"
+tags: "SOP,P3,MISC"
+stg_table: "stg_sc_sop_wk_sale_int_mthly"
+stg_database_bucket: "gs://3ec16ad38b10fd99f9ceb6250c08503d421e7af2c725bdff6ad48e4bfdb314"
+source_table_06: "master_item"
+source_table_05: "dc_algn_cd"
+source_table_04: "cal_catlg"
+source_table_03: "banner_catlg"
+source_table_02: "master_bu_supply"
+source_table_01: "sale_dtl_fact_supply"
+source_schema_04: "mx_edw_se"
+source_schema_03: "cons_mx_dtmsh_sc_se"
+source_schema_02: "cons_mx_dtmsh_dim_se"
+source_schema_01: "cons_mx_dtmsh_sale_se"
+sla_mins: "120"
+security: "highsecure"
+schedule: "None"
+REASON_ID: "61, 56, 58, 57, 63, 60, 62, 59, 66, 65, 68, 67, 69, 73, 71, 76, 74, 78, 75, 79, 77, 72"
+queue: "intlprcincld"
+project_name: "IBP_INT_DATOS"
+priority: "P3"
+permissions: "750"
+login: "LOGIN.SVCMXHS"
+load_type: "inc"
+load_date: "&DATE_FOLDER#"
+job_name: "<jn>"
+group: "mxschs"
+geo_region_cd: "MX"
+file_name: "IBP_WK_SALE_INT_MTHLY"
+engine: "tez"
+done_bucket: "gs://adbc3700313c3fe011e7ac1d3dbf45f981c4980db9269572405641fefc08c5"
+domain: "IBP"
+division_code: "all_banners"
+database_bucket: "gs://7069807ad4e7273bc3a9805fce5ea50d9f358c27f29ec42fd5c50cae8a4795"
+crncy_cd: "MXN"
+cmpny_nm: "MX"
+cmpny: "WMT-MX"
+#Import necessary libraries
+from airflow import DAG
+from datetime import datetime, timedelta
+from workflow_framework import callbacks
+
+#Building a parameters dictionary to be used into the dag set up
+_params = {
+    'workflow' : 'SOP-INT-SALE-SPARK-TEST',
+    'config_path' : 'incremental/mx_ibp_hs/sop_int_sale_spark_test',
+    'ops_emails' : ['jorge.ortiz@walmart.com'],
+    'priority' : 'P3',
+    'tags' : ['IBP', 'SC', 'P2', 'vn53rab'],
+    'sla_mins' : 120,
+    'num_of_retries' : 0,
+    'retry_delay' : 2,
+    'schedule_interval' : None,
+    'max_active_runs' : 1, 
+    'description' : 'Build table SC_SOP_WK_SALE_INT_MTHLY',
+    'start_date' : datetime(2024, 5, 1)
+}
+
+def failure_callback(context):
+    callbacks.failure_callback(context, config_path, workflow, priority)
+def sla_miss_callback(context):
+    callbacks.sla_miss_callback(context, workflow, priority)
+
+
+with DAG(_params['workflow'],
+    ## These parameters will be passed on to each operator
+    default_args={
+        'retries': _params['num_of_retries'],
+        'retry_delay' : timedelta(minutes = _params['retry_delay']),
+        'email': _params['ops_emails'],
+        'email_on_failure': True,
+        'email_on_retry': False,
+        'sla': timedelta(minutes = _params['sla_mins']),
+    },
+    description = _params['description'],
+    schedule_interval = _params['schedule_interval'],
+    start_date = _params['start_date'],
+    catchup = False,
+    tags = _params['tags'],
+    max_active_runs = _params['max_active_runs'],
+    concurrency = 4,
+    on_failure_callback = failure_callback,
+    sla_miss_callback = sla_miss_callback
+) as dag:
+    ##Import libraries to be used in dag
+    from pathlib import Path
+    from workflow_framework import framework
+    from workflow_framework.config import *
+    from airflow.operators.python_operator import PythonOperator
+    from airflow.utils.db import provide_session
+    from airflow.models import XCom
+    
+    ## Defining Xcom cleaning task
+    @provide_session  
+    def cleanup_xcom(session = None):
+        session.query(XCom).filter(XCom.dag_id == _params['workflow']).delete()
+ 
+    ## Setting up custom global variables
+    def initVariables():
+        global framework
+        path = Path(__file__).with_name(_params['workflow'].lower()+'_config.yaml')
+        framework = framework.Framework(_params['workflow'], path)
+    
+    initVariables()
+    
+    ## Dummy task to start the dag
+    start = framework.build_task('START','start')
+    
+    ## Dummy task to end the dag
+    end = framework.build_task('END','end',trigger_rule='all_success')
+    
+    ## Xcom clean-up task
+    delete_xcom_task = PythonOperator(
+        task_id = 'Delete_Xcom',
+        python_callable = cleanup_xcom,
+        trigger_rule = "all_success")
+    
+    stg_master_item = framework.build_task('HIVE', 'stg_master_item')
+        
+    ## Brick extraction jobs
+    brick_A1 = framework.build_task('SPARK_SQL','brick_A1', {'banner_cd': 'A1', 'sale_chnl_key' : 1, 'sale_chnl_code' : 'brick', 'op_cmpny_cd' : 'WMT-MX'})
+    brick_B2 = framework.build_task('SPARK_SQL','brick_B2', {'banner_cd': 'B2', 'sale_chnl_key' : 1, 'sale_chnl_code' : 'brick', 'op_cmpny_cd' : 'WMT-MX'})
+    brick_B3 = framework.build_task('SPARK_SQL','brick_B3', {'banner_cd': 'B3', 'sale_chnl_key' : 1, 'sale_chnl_code' : 'brick', 'op_cmpny_cd' : 'WMT-MX'})
+    brick_D4 = framework.build_task('SPARK_SQL','brick_D4', {'banner_cd': 'D4', 'sale_chnl_key' : 1, 'sale_chnl_code' : 'brick', 'op_cmpny_cd' : 'WMT-MX'})
+    brick_E4 = framework.build_task('SPARK_SQL','brick_E4', {'banner_cd': 'E4', 'sale_chnl_key' : 1, 'sale_chnl_code' : 'brick', 'op_cmpny_cd' : 'WMT-MX'})
+
+    ## OD extraction jobs
+    od_A1 = framework.build_task('SPARK_SQL','od_A1', {'banner_cd': 'A1', 'sale_chnl_key' : 2, 'sale_chnl_code' : 'od', 'op_cmpny_cd' : 'WMT-MX'})
+    od_B2 = framework.build_task('SPARK_SQL','od_B2', {'banner_cd': 'B2', 'sale_chnl_key' : 2, 'sale_chnl_code' : 'od', 'op_cmpny_cd' : 'WMT-MX'})
+    od_B3 = framework.build_task('SPARK_SQL','od_B3', {'banner_cd': 'B3', 'sale_chnl_key' : 2, 'sale_chnl_code' : 'od', 'op_cmpny_cd' : 'WMT-MX'})
+    od_D4 = framework.build_task('SPARK_SQL','od_D4', {'banner_cd': 'D4', 'sale_chnl_key' : 2, 'sale_chnl_code' : 'od', 'op_cmpny_cd' : 'WMT-MX'})
+    od_E4 = framework.build_task('SPARK_SQL','od_E4', {'banner_cd': 'E4', 'sale_chnl_key' : 2, 'sale_chnl_code' : 'od', 'op_cmpny_cd' : 'WMT-MX'})
+
+    ## Brick join jobs
+    brick_A1_join = framework.build_task('SPARK_SQL','brick_A1_join', {'banner_cd': 'A1', 'sale_chnl_key' : 1, 'sale_chnl_code' : 'brick', 'op_cmpny_cd' : 'WMT-MX'})
+    brick_B2_join = framework.build_task('SPARK_SQL','brick_B2_join', {'banner_cd': 'B2', 'sale_chnl_key' : 1, 'sale_chnl_code' : 'brick', 'op_cmpny_cd' : 'WMT-MX'})
+    brick_B3_join = framework.build_task('SPARK_SQL','brick_B3_join', {'banner_cd': 'B3', 'sale_chnl_key' : 1, 'sale_chnl_code' : 'brick', 'op_cmpny_cd' : 'WMT-MX'})
+    brick_D4_join = framework.build_task('SPARK_SQL','brick_D4_join', {'banner_cd': 'D4', 'sale_chnl_key' : 1, 'sale_chnl_code' : 'brick', 'op_cmpny_cd' : 'WMT-MX'})
+    brick_E4_join = framework.build_task('SPARK_SQL','brick_E4_join', {'banner_cd': 'E4', 'sale_chnl_key' : 1, 'sale_chnl_code' : 'brick', 'op_cmpny_cd' : 'WMT-MX'})
+
+    ## OD join jobs
+    od_A1_join = framework.build_task('SPARK_SQL','od_A1_join', {'banner_cd': 'A1', 'sale_chnl_key' : 2, 'sale_chnl_code' : 'od', 'op_cmpny_cd' : 'WMT-MX'})
+    od_B2_join = framework.build_task('SPARK_SQL','od_B2_join', {'banner_cd': 'B2', 'sale_chnl_key' : 2, 'sale_chnl_code' : 'od', 'op_cmpny_cd' : 'WMT-MX'})
+    od_B3_join = framework.build_task('SPARK_SQL','od_B3_join', {'banner_cd': 'B3', 'sale_chnl_key' : 2, 'sale_chnl_code' : 'od', 'op_cmpny_cd' : 'WMT-MX'})
+    od_D4_join = framework.build_task('SPARK_SQL','od_D4_join', {'banner_cd': 'D4', 'sale_chnl_key' : 2, 'sale_chnl_code' : 'od', 'op_cmpny_cd' : 'WMT-MX'})
+    od_E4_join = framework.build_task('SPARK_SQL','od_E4_join', {'banner_cd': 'E4', 'sale_chnl_key' : 2, 'sale_chnl_code' : 'od', 'op_cmpny_cd' : 'WMT-MX'})
+        
+    ## Consolidation
+    drop_table = framework.build_task('HIVE','drop_table')
+    
+    ## Brick insert jobs
+    brick_A1_write = framework.build_task('SPARK_SQL','brick_A1_write', {'banner_cd': 'A1', 'sale_chnl_code' : 'brick'})
+    brick_B2_write = framework.build_task('SPARK_SQL','brick_B2_write', {'banner_cd': 'B2', 'sale_chnl_code' : 'brick'})
+    brick_B3_write = framework.build_task('SPARK_SQL','brick_B3_write', {'banner_cd': 'B3', 'sale_chnl_code' : 'brick'})
+    brick_D4_write = framework.build_task('SPARK_SQL','brick_D4_write', {'banner_cd': 'D4', 'sale_chnl_code' : 'brick'})
+    brick_E4_write = framework.build_task('SPARK_SQL','brick_E4_write', {'banner_cd': 'E4', 'sale_chnl_code' : 'brick'})
+    
+    ## OD insert jobs
+    od_A1_write = framework.build_task('SPARK_SQL','od_A1_write', {'banner_cd': 'A1', 'sale_chnl_code' : 'od'})
+    od_B2_write = framework.build_task('SPARK_SQL','od_B2_write', {'banner_cd': 'B2', 'sale_chnl_code' : 'od'})
+    od_B3_write = framework.build_task('SPARK_SQL','od_B3_write', {'banner_cd': 'B3', 'sale_chnl_code' : 'od'})
+    od_D4_write = framework.build_task('SPARK_SQL','od_D4_write', {'banner_cd': 'D4', 'sale_chnl_code' : 'od'})
+    od_E4_write = framework.build_task('SPARK_SQL','od_E4_write', {'banner_cd': 'E4', 'sale_chnl_code' : 'od'})
+      
+ #Workflow definition 
+    start >> [brick_A1, brick_B2, brick_B3, brick_D4, brick_E4, od_A1, od_B2, od_B3, od_D4, od_E4] >> stg_master_item
+    stg_master_item >> [brick_A1_join, brick_B2_join, brick_B3_join, brick_D4_join, brick_E4_join, od_A1_join, od_B2_join, od_B3_join, od_D4_join, od_E4_join] >> drop_table
+    drop_table >> [brick_A1_write, brick_B2_write, brick_B3_write, brick_D4_write, brick_E4_write, od_A1_write, od_B2_write, od_B3_write, od_D4_write, od_E4_write] >> delete_xcom_task
+    delete_xcom_task >> end
