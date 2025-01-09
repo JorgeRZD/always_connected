@@ -5,6 +5,8 @@ import os
 from sys import argv
 from datetime import datetime
 
+path = ''
+
 def shut_down(leave = False):
     if leave == True:
         os.system('shutdown -s -t 0')
@@ -18,7 +20,7 @@ def time_to_leave(leaving_time):
     else:
         shut_down(False)
 
-path = 'C:/Users/vn53rab/Documents/'
+
 input_file = 'sample_text'
 with open(path+input_file+'.txt', 'r') as f:
     for line in f:
